@@ -1,0 +1,2 @@
+CUDA_VISIBLE_DEVICES="2" python test_training_imagenet.py -c configs/test_time_imagenet_lt_resnext50_sade.json -r /home/zz/wangZK/new_SADE/SADE-AgnosticLT/saved/imagenet/sade_e180_inv2_bs64_lr0.025/models/ImageNet_LT_ResNeXt50_SADE/0515_165153/model_best.pth  > logs/test/imagenet_log_SADE.log 2>&1
+python test_training_inat.py -c configs/test_time_iNaturalist_resnet50_sade.json -r saved/inaturalist/sade_e100_inv1_bs512_lr0.2/models/iNaturalist_ResNet50_SADE/0517_132658/checkpoint-epoch100.pth  > logs/test/inat_log_SADE.log 2>&1
