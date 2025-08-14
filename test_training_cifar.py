@@ -20,6 +20,9 @@ from base import BaseDataLoader
 from PIL import Image
 from PIL import ImageFilter 
 from data_loader.imbalance_cifar import IMBALANCECIFAR100
+from utils import adjusted_model_wrapper
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -241,11 +244,8 @@ def mic_acc_cal(preds, labels):
         acc_mic_top1 = (preds == labels).sum().item() / len(labels)
     return acc_mic_top1
 
-def main(config,args):
-    
-    ray = torch.from_numpy(np.array(args.ray.split(',')).astype(float)).float().cuda()
-    print(ray)
-    logger = config.get_logger('test') 
+def main(config):
+    # logger = config.get_logger('test') 
     print(config['use_hnet'])
     # build model architecture 
     model = config.init_obj('arch', module_arch, use_hnet=config['use_hnet']) 
@@ -283,7 +283,7 @@ def main(config,args):
     }      
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    logger.info('Loading checkpoint: {} ...'.format(config.resume))
+    # logger.info('Loading checkpoint: {} ...'.format(config.resume))
     checkpoint = torch.load(config.resume)
     state_dict = checkpoint['state_dict']
     if config['n_gpu'] > 1:
@@ -306,6 +306,13 @@ def main(config,args):
             test_imb_factor=distrb[test_distribution][0],
             reverse=distrb[test_distribution][1]
         )
+
+        
+        test_prior = torch.tensor(data_loader.cls_num_list).float().to(device)
+        test_prior = test_prior / test_prior.sum()
+        test_bias = test_prior.log()
+        model.eval()
+        adjusted_model = adjusted_model_wrapper(model, test_bias=test_bias)
         
         train_data_loader= data_loader.train_set()
         valid_data_loader = data_loader.test_set()
@@ -315,13 +322,7 @@ def main(config,args):
         
         optimizer = config.init_obj('optimizer', torch.optim, [aggregation_weight])
         
-        for k in range(config["epochs"]):
-            weight_record = test_training(train_data_loader, config, model, aggregation_weight, optimizer, args,ray)
-            if weight_record[0]<0.05 or weight_record[1]<0.05 or weight_record[2]<0.05:
-                break
-        print("Aggregation weight: Expert 1 is {0:.2f}, Expert 2 is {1:.2f}, Expert 3 is {2:.2f}".format(weight_record[0], weight_record[1], weight_record[2]))    
-        weight_record_list.append(weight_record)
-        record = test_validation(valid_data_loader, model, num_classes, aggregation_weight, device, many_shot, medium_shot, few_shot,ray)    
+        record = test_validation(valid_data_loader, adjusted_model, num_classes, aggregation_weight, device, many_shot, medium_shot, few_shot)    
         performance_record_list.append(record)
     
     print('\n')        
@@ -333,17 +334,19 @@ def main(config,args):
         print(test_distribution_set[i]+'\t')
         print(*txt)          
         i+=1        
-        
-    i=0
-    print('\n')
-    print('Aggregation weights of three experts:')    
-    for txt1 in weight_record_list:
-        print(test_distribution_set[i]+'\t')
-        print(*txt1)          
-        i+=1                 
-        
-def test_training(train_data_loader,  config, model,  aggregation_weight, optimizer, args,ray):
-    model.eval()
+                      
+    
+    # 提取所有分布的 eval_acc_mic_top1（即返回结果的最后一个值）
+    eval_acc_mic_top1_list = [record[3] for record in performance_record_list]
+    print(eval_acc_mic_top1_list)
+    # 计算平均值
+    average_eval_acc_mic_top1 = np.mean(eval_acc_mic_top1_list)
+    print(average_eval_acc_mic_top1)
+    
+    
+       
+def test_training(train_data_loader,  config, model,  aggregation_weight, optimizer, args):
+    # model.eval()
  
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
     losses = AverageMeter('Loss', ':.4e') 
@@ -358,8 +361,8 @@ def test_training(train_data_loader,  config, model,  aggregation_weight, optimi
         data[0] = data[0].cuda()
         data[1] = data[1].cuda() 
         aggregation_softmax = torch.nn.functional.softmax(aggregation_weight,dim=0) # softmax for normalization
-        output0 = model(data[0],ray)
-        output1 = model(data[1],ray)
+        output0 = model(data[0])
+        output1 = model(data[1])
         expert1_logits_output0 =  output0['logits'][:,0,:]
         expert2_logits_output0 = output0['logits'][:,1,:]
         expert3_logits_output0 = output0['logits'][:,2,:] 
@@ -387,8 +390,8 @@ def test_training(train_data_loader,  config, model,  aggregation_weight, optimi
 
     return  np.round(aggregation_softmax[0], decimals=2), np.round(aggregation_softmax[1], decimals=2), np.round(aggregation_softmax[2], decimals=2)
 
-def test_validation(data_loader, model, num_classes, aggregation_weight, device, many_shot, medium_shot, few_shot,ray):
-    model.eval()  
+def test_validation(data_loader, model, num_classes, aggregation_weight, device, many_shot, medium_shot, few_shot, aggregation_weight_as_ray = False):
+    # model.eval()  
     aggregation_weight.requires_grad = False 
     aggregation_weight = aggregation_weight.cuda()
     confusion_matrix = torch.zeros(num_classes, num_classes).cuda()
@@ -398,7 +401,8 @@ def test_validation(data_loader, model, num_classes, aggregation_weight, device,
         for i, (data, target) in enumerate(tqdm(data_loader)):
             data, target = data.cuda(), target.cuda()
             aggregation_softmax = torch.nn.functional.softmax(aggregation_weight) # softmax for normalization
-            output = model(data)
+            print(aggregation_weight_as_ray)
+            output = model(data,ray = aggregation_weight) if  aggregation_weight_as_ray else model(data)
             expert1_logits_output = output['logits'][:,0,:] 
             expert2_logits_output = output['logits'][:,1,:]
             expert3_logits_output = output['logits'][:,2,:]
@@ -432,13 +436,16 @@ if __name__ == '__main__':
  
     args.add_argument('-c', '--config', default='configs/test_time_cifar100_ir100_sade_hnet.json', type=str,
                       help='config file path (default: None)')
-    args.add_argument('-r', '--resume', default='/home/zz/wangZK/new_SADE/SADE-AgnosticLT/saved/cifar100/ir100/sade_e200_inv2_bs128_lr0.1/models/Imbalance_CIFAR100LT_IR100_SADE/0509_001735/model_best.pth', type=str,
+    # args.add_argument('-r', '--resume', default='saved/cifar100/ir100/sade_e200_inv2_bs128_lr0.1/models/Imbalance_CIFAR100LT_IR100_SADE/hnet/model_best.pth', type=str,
+    #                   help='path to latest checkpoint (default: None)')
+    args.add_argument('-r', '--resume', default='saved/cifar100/ir100/sade_e200_inv2_bs128_lr0.1/models/Imbalance_CIFAR100LT_IR100_SADE/0123_135010/model_best.pth', type=str,
                       help='path to latest checkpoint (default: None)')
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')
     args.add_argument('--epochs', default=1, type=int,
                       help='indices of GPUs to enable (default: all)')
-    args.add_argument('--ray', default='0,0,1', type=str)
-
-    config,args = ConfigParser.from_args(args,reargs=True)
-    main(config,args)
+    # dummy arguments used during training time
+    args.add_argument("--validate")
+    args.add_argument("--use-wandb")
+    config, _ = ConfigParser.from_args(args) 
+    main(config)   

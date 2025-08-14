@@ -11,7 +11,10 @@ import numpy as np
 from parse_config import ConfigParser
 import torch.nn.functional as F
 
-def main(config):
+from utils import adjusted_model_wrapper
+
+
+def main(config, posthoc_bias_correction=False):
     logger = config.get_logger('test') 
 
     # build model architecture
@@ -53,9 +56,9 @@ def main(config):
     
     record_list=[]
     
-    test_distribution_set = ["forward2", "forward1.5",  "uniform", "backward1.5", "backward2"] 
+    test_distribution_set = ["forward3", "forward2",  "uniform", "backward2", "backward3"]
     for test_distribution in test_distribution_set: 
-        eval_txt   = '../LADE-agnostic/data/iNaturalist18/iNaturalist18_%s.txt'%(test_distribution) 
+        eval_txt = './data_txt/iNaturalist18/iNaturalist18_%s.txt'%(test_distribution)
         print(test_distribution)
         data_loader = iNaturalistDataLoader(
             config['data_loader']['args']['data_dir'],
@@ -63,9 +66,18 @@ def main(config):
             shuffle=False,
             training=False,
             num_workers=8,
-            eval_txt = eval_txt 
+            eval_txt=eval_txt
         )
-        record = validation(data_loader, model, num_classes,device, many_shot, medium_shot, few_shot)
+        if posthoc_bias_correction:
+            test_prior = torch.tensor(data_loader.cls_num_list).float().to(device)
+            test_prior = test_prior / test_prior.sum()
+            test_bias = test_prior.log()
+        else:
+            test_bias = None
+
+        adjusted_model = adjusted_model_wrapper(model, test_bias=test_bias)
+
+        record = validation(data_loader, adjusted_model, num_classes,device, many_shot, medium_shot, few_shot)
             
         record_list.append(record)
     print('='*25, ' Final results ', '='*25)
@@ -125,6 +137,13 @@ if __name__ == '__main__':
                       help='path to latest checkpoint (default: None)')
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')
+    args.add_argument('-l', '--log-config', default='logger/logger_config.json', type=str,
+                      help='logging config file path (default: logger/logger_config.json)')
+    args.add_argument("--posthoc_bias_correction", dest="posthoc_bias_correction", action="store_true", default=False)
 
-    config = ConfigParser.from_args(args)
-    main(config)
+    # dummy arguments used during training time
+    args.add_argument("--validate")
+    args.add_argument("--use-wandb")
+
+    config, args = ConfigParser.from_args(args)
+    main(config, args.posthoc_bias_correction)

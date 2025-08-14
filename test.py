@@ -7,7 +7,10 @@ import model.metric as module_metric
 import model.model as module_arch
 import numpy as np
 from parse_config import ConfigParser
-
+import pprint
+import ray
+from ray import tune
+from ray.tune.search.hyperopt import HyperOptSearch
 
 def main(config):
     logger = config.get_logger('test')
@@ -78,7 +81,7 @@ def main(config):
   
     many_shot_acc = acc[many_shot].mean()
     medium_shot_acc = acc[medium_shot].mean()
-    few_shot_acc = acc[few_shot].mean() 
+    few_shot_acc = acc[few_shot].mean()
 
     n_samples = len(data_loader.sampler)
     log = {}
@@ -95,8 +98,7 @@ def main(config):
             "medium_shot_acc": medium_shot_acc,
             "few_shot_acc": few_shot_acc,
         })
-    logger.info(log)
-
+    logger.info(pprint.pprint(log))
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')
@@ -106,6 +108,12 @@ if __name__ == '__main__':
                       help='path to latest checkpoint (default: None)')
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')
+    args.add_argument('-l', '--log-config', default='logger/logger_config.json', type=str,
+                      help='logging config file path (default: logger/logger_config.json)')
 
-    config = ConfigParser.from_args(args)
+    # dummy arguments used during training time
+    args.add_argument("--validate")
+    args.add_argument("--use-wandb")
+
+    config, args = ConfigParser.from_args(args)
     main(config)

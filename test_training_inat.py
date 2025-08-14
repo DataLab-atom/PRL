@@ -255,7 +255,7 @@ def main(config):
     logger = config.get_logger('test')
  
     # build model architecture 
-    model = config.init_obj('arch', module_arch, use_hnet=config['use_hnet'],hnet_feature = config["hnet_feature"])
+    model = config.init_obj('arch', module_arch)
     
 
     # run training data here just for obtain indexs for head/medium/tail classes
@@ -268,7 +268,7 @@ def main(config):
     train_cls_num_list = train_data_loader.cls_num_list 
     train_cls_num_list=torch.tensor(train_cls_num_list)
     many_shot = train_cls_num_list > 100
-    few_shot = train_cls_num_list <20
+    few_shot =train_cls_num_list <20
     medium_shot =~many_shot & ~few_shot
     num_classes = config._config["arch"]["args"]["num_classes"]
      

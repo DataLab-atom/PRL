@@ -7,12 +7,17 @@ import model.model as module_arch
 import numpy as np
 from parse_config import ConfigParser
 import torch.nn.functional as F
-
 from utils import adjusted_model_wrapper
 
-import itertools
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
+from collections import Counter
 import copy
-import numpy as np
+from sentence_transformers import SentenceTransformer, util
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 
 def main(config, posthoc_bias_correction=False):
     logger = config.get_logger('test')
@@ -79,13 +84,19 @@ def main(config, posthoc_bias_correction=False):
             test_imb_factor=distrb[test_distribution][0],
             reverse=distrb[test_distribution][1]
         )
-        test_prior = torch.tensor(data_loader.cls_num_list).float().to(device)
-        test_prior = test_prior / test_prior.sum()
-        test_bias = test_prior.log()
-        model.eval()
+
+        if posthoc_bias_correction:
+            test_prior = torch.tensor(data_loader.cls_num_list).float().to(device)
+            test_prior = test_prior / test_prior.sum()
+            test_bias = test_prior.log()
+        else:
+            test_bias = None
+
         adjusted_model = adjusted_model_wrapper(model, test_bias=test_bias)
+
+        weight = [config['aggregation_weight1'], config['aggregation_weight2'], config['aggregation_weight3']]
         
-        record = validation(data_loader, adjusted_model, num_classes,device, many_shot, medium_shot, few_shot)
+        record = validation(data_loader, adjusted_model, num_classes,device, many_shot, medium_shot, few_shot, weight)
             
         record_list.append(record)
     print('='*25, ' Final results ', '='*25)
@@ -95,12 +106,12 @@ def main(config, posthoc_bias_correction=False):
         print(*txt)          
         i+=1
     
-    # # 提取所有分布的 eval_acc_mic_top1（即返回结果的最后一个值）
-    # eval_acc_mic_top1_list = [record[3] for record in record_list]
-    # # 计算平均值
-    # average_eval_acc_mic_top1 = np.mean(eval_acc_mic_top1_list)
-    # # print(average_eval_acc_mic_top1)
-    # return average_eval_acc_mic_top1, record_list    
+    # 提取所有分布的 eval_acc_mic_top1（即返回结果的最后一个值）
+    eval_acc_mic_top1_list = [record[3] for record in record_list]
+    # 计算平均值
+    average_eval_acc_mic_top1 = np.mean(eval_acc_mic_top1_list)
+    # print(average_eval_acc_mic_top1)
+    return average_eval_acc_mic_top1, record_list    
 
 def mic_acc_cal(preds, labels):
     if isinstance(labels, tuple):
@@ -113,7 +124,7 @@ def mic_acc_cal(preds, labels):
     return acc_mic_top1
    
 
-def validation(data_loader, model, num_classes,device,many_shot, medium_shot, few_shot):
+def validation(data_loader, model, num_classes,device,many_shot, medium_shot, few_shot, weight):
  
     confusion_matrix = torch.zeros(num_classes, num_classes).cuda()
     total_logits = torch.empty((0, num_classes)).cuda()
@@ -121,7 +132,8 @@ def validation(data_loader, model, num_classes,device,many_shot, medium_shot, fe
     with torch.no_grad():
         for i, (data, target) in enumerate(tqdm(data_loader)):
             data, target = data.to(device), target.to(device)
-            output = model(data)
+            weight = torch.tensor(weight).cuda()
+            output = model(data, ray=weight)
             for t, p in zip(target.view(-1), output.argmax(dim=1).view(-1)):
                 confusion_matrix[t.long(), p.long()] += 1
             total_logits = torch.cat((total_logits, output))
@@ -142,6 +154,29 @@ def validation(data_loader, model, num_classes,device,many_shot, medium_shot, fe
     return np.round(many_shot_acc * 100, decimals=2), np.round(medium_shot_acc * 100, decimals=2), np.round(few_shot_acc * 100, decimals=2), np.round(eval_acc_mic_top1 * 100, decimals=2)
  
 
+# 定义一个简单的全连接神经网络 (DNN)
+class DNN(nn.Module):
+    def __init__(self, input_dim=384, output_dim=3):
+        super(DNN, self).__init__()
+        
+        # 定义网络结构
+        self.fc1 = nn.Linear(input_dim, 512)  # 第一层：输入 384 维，输出 512 维
+        self.fc2 = nn.Linear(512, 256)        # 第二层：输入 512 维，输出 256 维
+        self.fc3 = nn.Linear(256, 128)        # 第三层：输入 256 维，输出 128 维
+        self.fc4 = nn.Linear(128, output_dim) # 第四层：输入 128 维，输出 3 维
+        
+        # 激活函数
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        # 定义前向传播过程
+        x = self.relu(self.fc1(x))  # 第一层 + ReLU
+        x = self.relu(self.fc2(x))  # 第二层 + ReLU
+        x = self.relu(self.fc3(x))  # 第三层 + ReLU
+        x = self.fc4(x)             # 第四层输出
+        return x
+
+
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')
     args.add_argument('-c', '--config', default=None, type=str,
@@ -159,4 +194,42 @@ if __name__ == '__main__':
     args.add_argument("--use-wandb")
 
     config, args = ConfigParser.from_args(args)
-    main(config)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    # 创建一个模型实例
+    model = DNN(input_dim=384, output_dim=3)
+    model.load_state_dict(torch.load("dnn_text_to_vector.pth"))
+    model.to(device)
+    model.eval()  # 切换到评估模式
+
+    test_text = "Uniform distribution (balanced classes) variant 1"
+    semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
+    test_text = semantic_model.encode(test_text,  convert_to_tensor=True)    # 文本嵌入
+    
+    with torch.no_grad():
+
+        predicted_vector = model(test_text.to(device))
+    # print("Input text:", test_text)
+    print("Predicted vector:", predicted_vector.cpu().numpy())
+    predicted_vector = predicted_vector.cpu().numpy()
+    #  加一个归一化
+    print(predicted_vector.shape)
+    w1 = predicted_vector[0]
+    w2 = predicted_vector[1]
+    w3 = predicted_vector[2]
+    config_copy = copy.deepcopy(config)
+    # config._config['aggregation_weight1'], ['aggregation_weight2'], ['aggregation_weight3']
+    config_copy._config['aggregation_weight1'] = w1
+    config_copy._config['aggregation_weight2'] = w2
+    config_copy._config['aggregation_weight3'] = w3
+
+    # 调用测试函数，获得当前组合下的平均评测准确率
+    score, record_list = main(config_copy, args.posthoc_bias_correction)
+
+    print("="*30, "最终结果", "="*30)
+    print(f"测试分布对应的偏好向量: w1={w1}, w2={w2}, w3={w3}  得分: {score:.4f}")
+    print("详细性能记录:")
+    for rec in record_list:
+        print(rec)
+    print("-" * 60)

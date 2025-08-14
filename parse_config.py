@@ -9,7 +9,8 @@ from utils import read_json, write_json
 
 
 class ConfigParser:
-    def __init__(self, config, resume=None, modification=None, load_crt=None, run_id=None):
+    def __init__(self, config, resume=None, modification=None, load_crt=None, run_id=None,
+                 log_config='logger/logger_config.json', use_wandb=False, store_data=True, validate=False):
         """
         class to parse configuration json file. Handles hyperparameters for training, initializations of modules, checkpoint saving
         and logging module.
@@ -17,6 +18,9 @@ class ConfigParser:
         :param resume: String, path to the checkpoint being loaded.
         :param modification: Dict keychain:value, specifying position values to be replaced from config dict.
         :param run_id: Unique Identifier for training processes. Used to save checkpoints and training log. Timestamp is being used as default
+        :param log_config: Configuration for text logger.
+        :param use_wandb: Use weight and biases for logging purposes.
+        :param validate: Run validation after every epoch.
         """
         # load config file and apply modification
         self._config = _update_config(config, modification)
@@ -30,34 +34,40 @@ class ConfigParser:
         exper_name = self.config['name']
         if run_id is None: # use timestamp as default run-id
             run_id = datetime.now().strftime(r'%m%d_%H%M%S')
-        self._save_dir = save_dir / 'models' / exper_name / run_id
-        self._log_dir = save_dir / 'models' / exper_name / run_id
+        self._save_dir = self._log_dir = save_dir / 'models' / exper_name / run_id
 
-        # make directory for saving checkpoints and log.
-        exist_ok = run_id == ''
-        self.save_dir.mkdir(parents=True, exist_ok=exist_ok)
-        #self.log_dir.mkdir(parents=True, exist_ok=exist_ok)
+        if use_wandb:
+            self.config['trainer']['wandb'] = use_wandb
 
-        # save updated config file to the checkpoint dir
-        write_json(self.config, self.save_dir / 'config.json')
+        if validate:
+            self.config['trainer']['validate'] = validate
 
-        # configure logging module
-        setup_logging(self.log_dir)
-        self.log_levels = {
-            0: logging.WARNING,
-            1: logging.INFO,
-            2: logging.DEBUG
-        }
+        if store_data:
+            # make directory for saving checkpoints and log.
+            exist_ok = run_id == ''
+            self.save_dir.mkdir(parents=True, exist_ok=exist_ok)
+
+            # save updated config file to the checkpoint dir
+            write_json(self.config, self.save_dir / 'config.json')
+
+        if log_config is not None:
+            # configure logging module
+            setup_logging(self.log_dir, log_config=log_config)
+            self.log_levels = {
+                0: logging.WARNING,
+                1: logging.INFO,
+                2: logging.DEBUG
+            }
 
     @classmethod
-    def from_args(cls, args, options='',reargs = False,jupyter=False):
+    def from_args(cls, args, options='', args_input=None, store_data=True):
         """
         Initialize this class from some cli arguments. Used in train, test.
         """
         for opt in options:
             args.add_argument(*opt.flags, default=None, type=opt.type)
         if not isinstance(args, tuple):
-            args = args.parse_args(args=[]) if jupyter else args.parse_args()
+            args = args.parse_args(args=args_input)
 
         if args.device is not None:
             os.environ["CUDA_VISIBLE_DEVICES"] = args.device
@@ -75,7 +85,7 @@ class ConfigParser:
             assert args.config is not None, msg_no_cfg
             resume = None
             cfg_fname = Path(args.config)
-
+        
         config = read_json(cfg_fname)
         if args.config and resume:
             # update new config for fine-tuning
@@ -83,9 +93,12 @@ class ConfigParser:
 
         # parse custom cli options into dictionary
         modification = {opt.target : getattr(args, _get_opt_name(opt.flags)) for opt in options}
-        if reargs:
-            return cls(config, resume, modification, load_crt=load_crt),args
-        return cls(config, resume, modification, load_crt=load_crt)
+
+        kwargs = dict(load_crt=load_crt, use_wandb=args.use_wandb, store_data=store_data, validate=args.validate)
+        if hasattr(args, 'log_config'):
+            kwargs['log_config'] = args.log_config
+
+        return cls(config, resume, modification, **kwargs), args
 
     def init_obj(self, name, module, *args, allow_override=False, **kwargs):
         """

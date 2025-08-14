@@ -1,0 +1,531 @@
+True
+Files already downloaded and verified
+Files already downloaded and verified
+forward50
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+  0%|          | 0/20 [00:00<?, ?it/s]test_training_cifar.py:403: UserWarning: Implicit dimension choice for softmax has been deprecated. Change the call to include dim=X as an argument.
+  aggregation_softmax = torch.nn.functional.softmax(aggregation_weight) # softmax for normalization
+  5%|▌         | 1/20 [00:04<01:19,  4.16s/it] 20%|██        | 4/20 [00:04<00:13,  1.22it/s] 40%|████      | 8/20 [00:04<00:04,  2.92it/s] 60%|██████    | 12/20 [00:04<00:01,  5.04it/s] 75%|███████▌  | 15/20 [00:04<00:00,  6.96it/s] 90%|█████████ | 18/20 [00:04<00:00,  9.21it/s]100%|██████████| 20/20 [00:04<00:00,  4.08it/s]
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+Many-shot 74.73, Medium-shot 46.61, Few-shot 13.39, All 70.15
+forward25
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+  0%|          | 0/24 [00:00<?, ?it/s]  4%|▍         | 1/24 [00:00<00:05,  4.11it/s] 17%|█▋        | 4/24 [00:00<00:01, 12.28it/s] 29%|██▉       | 7/24 [00:00<00:00, 17.31it/s] 46%|████▌     | 11/24 [00:00<00:00, 22.52it/s] 58%|█████▊    | 14/24 [00:00<00:00, 21.87it/s] 75%|███████▌  | 18/24 [00:00<00:00, 24.87it/s] 92%|█████████▏| 22/24 [00:01<00:00, 27.10it/s]100%|██████████| 24/24 [00:01<00:00, 19.46it/s]
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+Many-shot 74.23, Medium-shot 48.10, Few-shot 13.83, All 66.88
+forward10
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+  0%|          | 0/31 [00:00<?, ?it/s]  3%|▎         | 1/31 [00:00<00:08,  3.58it/s] 13%|█▎        | 4/31 [00:00<00:02, 12.41it/s] 23%|██▎       | 7/31 [00:00<00:01, 17.37it/s] 32%|███▏      | 10/31 [00:00<00:01, 20.83it/s] 42%|████▏     | 13/31 [00:00<00:00, 20.07it/s] 52%|█████▏    | 16/31 [00:00<00:00, 19.18it/s] 61%|██████▏   | 19/31 [00:01<00:00, 20.15it/s] 71%|███████   | 22/31 [00:01<00:00, 21.74it/s] 81%|████████  | 25/31 [00:01<00:00, 23.17it/s] 90%|█████████ | 28/31 [00:01<00:00, 23.97it/s]100%|██████████| 31/31 [00:01<00:00, 23.69it/s]100%|██████████| 31/31 [00:01<00:00, 18.68it/s]
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+Many-shot 73.19, Medium-shot 49.91, Few-shot 19.77, All 62.64
+forward5
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+  0%|          | 0/39 [00:00<?, ?it/s]  3%|▎         | 1/39 [00:00<00:09,  3.87it/s] 10%|█         | 4/39 [00:00<00:02, 12.26it/s] 21%|██        | 8/39 [00:00<00:01, 19.13it/s] 28%|██▊       | 11/39 [00:00<00:01, 20.18it/s] 38%|███▊      | 15/39 [00:00<00:01, 23.68it/s] 46%|████▌     | 18/39 [00:00<00:00, 24.31it/s] 54%|█████▍    | 21/39 [00:01<00:00, 23.83it/s] 64%|██████▍   | 25/39 [00:01<00:00, 25.91it/s] 72%|███████▏  | 28/39 [00:01<00:00, 25.32it/s] 79%|███████▉  | 31/39 [00:01<00:00, 25.29it/s] 87%|████████▋ | 34/39 [00:01<00:00, 26.42it/s] 95%|█████████▍| 37/39 [00:01<00:00, 26.58it/s]100%|██████████| 39/39 [00:01<00:00, 21.39it/s]
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+Many-shot 72.81, Medium-shot 51.07, Few-shot 22.11, All 59.41
+forward2
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+  0%|          | 0/56 [00:00<?, ?it/s]  2%|▏         | 1/56 [00:00<00:14,  3.75it/s]  7%|▋         | 4/56 [00:00<00:04, 11.32it/s] 11%|█         | 6/56 [00:00<00:03, 13.89it/s] 16%|█▌        | 9/56 [00:00<00:02, 16.56it/s] 21%|██▏       | 12/56 [00:00<00:02, 18.89it/s] 27%|██▋       | 15/56 [00:00<00:02, 17.81it/s] 30%|███       | 17/56 [00:01<00:02, 18.13it/s] 36%|███▌      | 20/56 [00:01<00:01, 18.20it/s] 41%|████      | 23/56 [00:01<00:01, 19.54it/s] 46%|████▋     | 26/56 [00:01<00:01, 20.00it/s] 52%|█████▏    | 29/56 [00:01<00:01, 20.50it/s] 57%|█████▋    | 32/56 [00:01<00:01, 21.21it/s] 62%|██████▎   | 35/56 [00:01<00:01, 19.63it/s] 68%|██████▊   | 38/56 [00:02<00:00, 18.64it/s] 71%|███████▏  | 40/56 [00:02<00:00, 17.81it/s] 75%|███████▌  | 42/56 [00:02<00:00, 18.03it/s] 80%|████████  | 45/56 [00:02<00:00, 19.60it/s] 84%|████████▍ | 47/56 [00:02<00:00, 19.24it/s] 89%|████████▉ | 50/56 [00:02<00:00, 20.71it/s] 95%|█████████▍| 53/56 [00:02<00:00, 20.70it/s]100%|██████████| 56/56 [00:03<00:00, 20.50it/s]100%|██████████| 56/56 [00:03<00:00, 17.84it/s]
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+Many-shot 70.49, Medium-shot 53.56, Few-shot 28.06, All 55.36
+uniform
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+  0%|          | 0/79 [00:00<?, ?it/s]  1%|▏         | 1/79 [00:00<00:21,  3.71it/s]  6%|▋         | 5/79 [00:00<00:04, 15.04it/s] 10%|█         | 8/79 [00:00<00:03, 19.20it/s] 15%|█▌        | 12/79 [00:00<00:02, 23.19it/s] 20%|██        | 16/79 [00:00<00:02, 25.53it/s] 24%|██▍       | 19/79 [00:00<00:02, 25.96it/s] 29%|██▉       | 23/79 [00:01<00:02, 27.57it/s] 34%|███▍      | 27/79 [00:01<00:01, 28.70it/s] 39%|███▉      | 31/79 [00:01<00:01, 29.45it/s] 44%|████▍     | 35/79 [00:01<00:01, 30.37it/s] 49%|████▉     | 39/79 [00:01<00:01, 30.47it/s] 54%|█████▍    | 43/79 [00:01<00:01, 31.48it/s] 59%|█████▉    | 47/79 [00:01<00:01, 31.76it/s] 65%|██████▍   | 51/79 [00:01<00:00, 31.73it/s] 70%|██████▉   | 55/79 [00:02<00:00, 32.53it/s] 75%|███████▍  | 59/79 [00:02<00:00, 32.16it/s] 80%|███████▉  | 63/79 [00:02<00:00, 32.44it/s] 85%|████████▍ | 67/79 [00:02<00:00, 33.29it/s] 90%|████████▉ | 71/79 [00:02<00:00, 32.58it/s] 95%|█████████▍| 75/79 [00:02<00:00, 33.02it/s]100%|██████████| 79/79 [00:02<00:00, 33.39it/s]100%|██████████| 79/79 [00:02<00:00, 27.83it/s]
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+Many-shot 67.89, Medium-shot 54.26, Few-shot 31.17, All 52.10
+backward2
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+  0%|          | 0/56 [00:00<?, ?it/s]  2%|▏         | 1/56 [00:00<00:12,  4.27it/s]  9%|▉         | 5/56 [00:00<00:03, 15.98it/s] 16%|█▌        | 9/56 [00:00<00:02, 21.71it/s] 23%|██▎       | 13/56 [00:00<00:01, 25.58it/s] 30%|███       | 17/56 [00:00<00:01, 28.06it/s] 38%|███▊      | 21/56 [00:00<00:01, 29.16it/s] 45%|████▍     | 25/56 [00:00<00:01, 30.01it/s] 52%|█████▏    | 29/56 [00:01<00:00, 30.18it/s] 59%|█████▉    | 33/56 [00:01<00:00, 30.64it/s] 66%|██████▌   | 37/56 [00:01<00:00, 31.35it/s] 73%|███████▎  | 41/56 [00:01<00:00, 31.33it/s] 80%|████████  | 45/56 [00:01<00:00, 31.90it/s] 88%|████████▊ | 49/56 [00:01<00:00, 31.91it/s] 95%|█████████▍| 53/56 [00:01<00:00, 31.08it/s]100%|██████████| 56/56 [00:02<00:00, 26.68it/s]
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+Many-shot 64.03, Medium-shot 53.84, Few-shot 35.42, All 49.44
+backward5
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+  0%|          | 0/39 [00:00<?, ?it/s]  3%|▎         | 1/39 [00:00<00:08,  4.29it/s] 13%|█▎        | 5/39 [00:00<00:02, 16.22it/s] 23%|██▎       | 9/39 [00:00<00:01, 22.09it/s] 33%|███▎      | 13/39 [00:00<00:01, 25.84it/s] 44%|████▎     | 17/39 [00:00<00:00, 27.82it/s] 54%|█████▍    | 21/39 [00:00<00:00, 29.20it/s] 64%|██████▍   | 25/39 [00:00<00:00, 30.13it/s] 74%|███████▍  | 29/39 [00:01<00:00, 28.96it/s] 82%|████████▏ | 32/39 [00:01<00:00, 28.90it/s] 92%|█████████▏| 36/39 [00:01<00:00, 30.32it/s]100%|██████████| 39/39 [00:01<00:00, 25.31it/s]
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+Many-shot 59.71, Medium-shot 52.88, Few-shot 40.15, All 47.61
+backward10
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+  0%|          | 0/31 [00:00<?, ?it/s]  3%|▎         | 1/31 [00:00<00:07,  4.27it/s] 16%|█▌        | 5/31 [00:00<00:01, 16.30it/s] 26%|██▌       | 8/31 [00:00<00:01, 19.14it/s] 39%|███▊      | 12/31 [00:00<00:00, 23.43it/s] 52%|█████▏    | 16/31 [00:00<00:00, 25.70it/s] 61%|██████▏   | 19/31 [00:00<00:00, 25.13it/s] 74%|███████▍  | 23/31 [00:00<00:00, 27.54it/s] 84%|████████▍ | 26/31 [00:01<00:00, 27.80it/s] 94%|█████████▎| 29/31 [00:01<00:00, 27.34it/s]100%|██████████| 31/31 [00:01<00:00, 22.42it/s]
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+Many-shot 54.01, Medium-shot 51.43, Few-shot 43.25, All 46.96
+backward25
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+  0%|          | 0/24 [00:00<?, ?it/s]  4%|▍         | 1/24 [00:00<00:05,  4.13it/s] 21%|██        | 5/24 [00:00<00:01, 15.81it/s] 38%|███▊      | 9/24 [00:00<00:00, 21.57it/s] 54%|█████▍    | 13/24 [00:00<00:00, 25.18it/s] 71%|███████   | 17/24 [00:00<00:00, 27.24it/s] 88%|████████▊ | 21/24 [00:00<00:00, 28.98it/s]100%|██████████| 24/24 [00:01<00:00, 22.27it/s]
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+Many-shot 44.26, Medium-shot 48.63, Few-shot 46.16, All 46.55
+backward50
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+Files already downloaded and verified
+  0%|          | 0/20 [00:00<?, ?it/s]  5%|▌         | 1/20 [00:00<00:04,  4.28it/s] 20%|██        | 4/20 [00:00<00:01, 13.98it/s] 40%|████      | 8/20 [00:00<00:00, 21.34it/s] 55%|█████▌    | 11/20 [00:00<00:00, 23.90it/s] 75%|███████▌  | 15/20 [00:00<00:00, 26.74it/s] 90%|█████████ | 18/20 [00:00<00:00, 27.57it/s]100%|██████████| 20/20 [00:00<00:00, 21.04it/s]
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+Many-shot 42.41, Medium-shot 47.05, Few-shot 47.91, All 47.67
+
+
+=========================  Final results  =========================
+
+
+Top-1 accuracy on many-shot, medium-shot, few-shot and all classes:
+forward50	
+74.73 46.61 13.39 70.15
+forward25	
+74.23 48.1 13.83 66.88
+forward10	
+73.19 49.91 19.77 62.64
+forward5	
+72.81 51.07 22.11 59.41
+forward2	
+70.49 53.56 28.06 55.36
+uniform	
+67.89 54.26 31.17 52.1
+backward2	
+64.03 53.84 35.42 49.44
+backward5	
+59.71 52.88 40.15 47.61
+backward10	
+54.01 51.43 43.25 46.96
+backward25	
+44.26 48.63 46.16 46.55
+backward50	
+42.41 47.05 47.91 47.67
+[70.15, 66.88, 62.64, 59.41, 55.36, 52.1, 49.44, 47.61, 46.96, 46.55, 47.67]
+54.9790909090909

@@ -1,0 +1,14 @@
+Files already downloaded and verified
+Loading checkpoint: saved/cifar100/ir100/bs_e200_tau1.0_bs128_lr0.1/models/Imbalance_CIFAR100LT_IR100/0312_151351/checkpoint-epoch200.pth ...
+test.py:34: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(config.resume)
+Traceback (most recent call last):
+  File "test.py", line 116, in <module>
+    main(config)
+  File "test.py", line 38, in main
+    model.load_state_dict(state_dict)
+  File "/home/zz/.conda/envs/balpoe/lib/python3.8/site-packages/torch/nn/modules/module.py", line 2215, in load_state_dict
+    raise RuntimeError('Error(s) in loading state_dict for {}:\n\t{}'.format(
+RuntimeError: Error(s) in loading state_dict for ResNet32Model:
+	Missing key(s) in state_dict: "backbone.linears.0.weight", "backbone.linears.1.weight", "backbone.linears.2.weight". 
+	Unexpected key(s) in state_dict: "backbone.hnet2linears.ray", "backbone.hnet2linears.ray_mlp.0.weight", "backbone.hnet2linears.ray_mlp.0.bias", "backbone.hnet2linears.ray_mlp.2.weight", "backbone.hnet2linears.ray_mlp.2.bias", "backbone.hnet2linears.ray_mlp.4.weight", "backbone.hnet2linears.ray_mlp.4.bias", "backbone.hnet2linears.backbone_linears_weights.weight", "backbone.hnet2linears.backbone_linears_weights.bias". 

@@ -11,7 +11,10 @@ import numpy as np
 from parse_config import ConfigParser
 import torch.nn.functional as F
 
-def main(config):
+from utils import adjusted_model_wrapper
+
+
+def main(config, posthoc_bias_correction=False):
     logger = config.get_logger('test')
  
     # build model architecture
@@ -19,7 +22,6 @@ def main(config):
         model = config.init_obj('arch', module_arch, allow_override=True, returns_feat=False)
     else:
         model = config.init_obj('arch', module_arch)
-    #logger.info(model)
 
     logger.info('Loading checkpoint: {} ...'.format(config.resume))
     checkpoint = torch.load(config.resume)
@@ -48,7 +50,17 @@ def main(config):
             num_workers=2,
             test_txt=test_txt
         )
-        record = validation(data_loader, model, num_classes,device)
+
+        if posthoc_bias_correction:
+            test_prior = torch.tensor(data_loader.cls_num_list).float().to(device)
+            test_prior = test_prior / test_prior.sum()
+            test_bias = test_prior.log()
+        else:
+            test_bias = None
+
+        adjusted_model = adjusted_model_wrapper(model, test_bias=test_bias)
+
+        record = validation(data_loader, adjusted_model, num_classes, device)
             
         record_list.append(record)
     print('='*25, ' Final results ', '='*25)
@@ -69,7 +81,7 @@ def mic_acc_cal(preds, labels):
     return acc_mic_top1
    
 
-def validation(data_loader, model, num_classes,device):
+def validation(data_loader, model, num_classes, device):
     b = np.load("./data/imagenet_lt_shot_list.npy")
     many_shot = b[0]
     medium_shot = b[1] 
@@ -85,9 +97,7 @@ def validation(data_loader, model, num_classes,device):
                 confusion_matrix[t.long(), p.long()] += 1
             total_logits = torch.cat((total_logits, output))
             total_labels = torch.cat((total_labels, target))  
-            
-    
-    
+
     probs, preds = F.softmax(total_logits.detach(), dim=1).max(dim=1)
 
     # Calculate the overall accuracy and F measurement
@@ -111,6 +121,13 @@ if __name__ == '__main__':
                       help='path to latest checkpoint (default: None)')
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')
+    args.add_argument('-l', '--log-config', default='logger/logger_config.json', type=str,
+                      help='logging config file path (default: logger/logger_config.json)')
+    args.add_argument("--posthoc_bias_correction", dest="posthoc_bias_correction", action="store_true", default=False)
 
-    config = ConfigParser.from_args(args)
-    main(config)
+    # dummy arguments used during training time
+    args.add_argument("--validate")
+    args.add_argument("--use-wandb")
+
+    config, args = ConfigParser.from_args(args)
+    main(config, args.posthoc_bias_correction)
