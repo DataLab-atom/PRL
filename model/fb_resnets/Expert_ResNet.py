@@ -107,12 +107,17 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_experts, dropout=None, num_classes=1000, use_norm=False, reduce_dimension=False, layer3_output_dim=None, layer4_output_dim=None, share_layer3=False, returns_feat=False, s=30, use_hnet=False):
+    def __init__(self, block, layers, num_experts, dropout=None, num_classes=1000, use_norm=False,
+                 reduce_dimension=False, layer3_output_dim=None, layer4_output_dim=None, share_layer3=False,
+                 returns_feat=False, s=30, reduce_first_kernel=False, zero_init_residual=False):
         self.inplanes = 64
         self.num_experts = num_experts
         super(ResNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                               bias=False)
+
+        if not reduce_first_kernel:
+            self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        else:
+            self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -142,7 +147,7 @@ class ResNet(nn.Module):
         self.inplanes = self.next_inplanes
         self.layer4s = nn.ModuleList([self._make_layer(block, layer4_output_dim, layers[3], stride=2) for _ in range(num_experts)])
         self.inplanes = self.next_inplanes
-        self.avgpool = nn.AvgPool2d(7, stride=1)
+        self.avgpool = nn.AdaptiveAvgPool2d((1,1))
         
         self.use_dropout = True if dropout else False
 
@@ -157,6 +162,16 @@ class ResNet(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
+
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        if zero_init_residual:
+            for m in self.modules():
+                if isinstance(m, Bottleneck) and m.bn3.weight is not None:
+                    nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
+                elif isinstance(m, BasicBlock) and m.bn2.weight is not None:
+                    nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
 
         if use_norm:
             self.linears = nn.ModuleList([NormedLinear(layer4_output_dim * block.expansion, num_classes) for _ in range(num_experts)])

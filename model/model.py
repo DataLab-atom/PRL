@@ -4,10 +4,10 @@ import torch.nn.functional as F
 from base import BaseModel
 from .fb_resnets import ResNet
 from .fb_resnets import ResNeXt
-from .fb_resnets import Expert_ResNet ,Expert_ResNet_hnet
-from .fb_resnets import Expert_ResNeXt, Expert_ResNeXt_hnet
+from .fb_resnets import Expert_ResNet
+from .fb_resnets import Expert_ResNeXt 
 from .ldam_drw_resnets import resnet_cifar
-from .ldam_drw_resnets import expert_resnet_cifar_with_hnet
+from .ldam_drw_resnets import expert_resnet_cifar
 
 
 class Model(BaseModel):
@@ -22,30 +22,9 @@ class Model(BaseModel):
         self.backbone._hook_before_iter()
 
     def forward(self, x, ray=None, mode=None):
-        # print("ray in model: ",ray.shape)
-        x = self.backbone(x,ray)
+        x = self.backbone(x, ray)
 
         assert mode is None
-        return x
-
-class EAModel(BaseModel):
-    requires_target = True
-    confidence_model = True
-
-    def __init__(self, num_classes, backbone_class=None):
-        super().__init__()
-        if backbone_class is not None: # Do not init backbone here if None
-            self.backbone = backbone_class(num_classes)
-
-    def _hook_before_iter(self):
-        self.backbone._hook_before_iter()
-
-    def forward(self, x, mode=None, target=None):
-        x = self.backbone(x, target=target)
-
-        assert isinstance(x, tuple) # logits, extra_info
-        assert mode is None
-        
         return x
 
 class ResNet10Model(Model):
@@ -60,26 +39,50 @@ class ResNet32Model(Model): # From LDAM_DRW
     def __init__(self, num_classes, reduce_dimension=False, layer2_output_dim=None, layer3_output_dim=None, use_norm=False, num_experts=1, use_hnet=False, **kwargs):
         super().__init__(num_classes, None)
         if num_experts == 1:
-            self.backbone = resnet_cifar.ResNet_s(resnet_cifar.BasicBlock, [5, 5, 5], num_classes=num_classes, reduce_dimension=reduce_dimension, layer2_output_dim=layer2_output_dim, layer3_output_dim=layer3_output_dim, use_norm=use_norm, use_hnet=use_hnet, **kwargs)
+            self.backbone = resnet_cifar.ResNet_s(resnet_cifar.BasicBlock, [5, 5, 5], num_classes=num_classes, reduce_dimension=reduce_dimension, layer2_output_dim=layer2_output_dim, layer3_output_dim=layer3_output_dim, use_norm=use_norm, **kwargs)
         else:
-            self.backbone = expert_resnet_cifar_with_hnet.ResNet_s(expert_resnet_cifar_with_hnet.BasicBlock, [5, 5, 5], num_classes=num_classes, reduce_dimension=reduce_dimension, layer2_output_dim=layer2_output_dim, layer3_output_dim=layer3_output_dim, use_norm=use_norm, num_experts=num_experts,use_hnet=use_hnet, **kwargs)
- 
+            self.backbone = expert_resnet_cifar.ResNet_s(expert_resnet_cifar.BasicBlock, [5, 5, 5], num_classes=num_classes, reduce_dimension=reduce_dimension, layer2_output_dim=layer2_output_dim, layer3_output_dim=layer3_output_dim, use_norm=use_norm, num_experts=num_experts, use_hnet=use_hnet, **kwargs)
+
+
+class ResNet32Model_B(Model): # From LDAM_DRW
+    def __init__(self, num_classes, reduce_dimension=False, layer2_output_dim=None, layer3_output_dim=None, use_norm=False, num_experts=1, **kwargs):
+        super().__init__(num_classes, None)
+        if num_experts == 1:
+            self.backbone = resnet_cifar.ResNet_s(resnet_cifar.BasicBlockB, [5, 5, 5], num_classes=num_classes, reduce_dimension=reduce_dimension, layer2_output_dim=layer2_output_dim, layer3_output_dim=layer3_output_dim, use_norm=use_norm, **kwargs)
+        else:
+            self.backbone = expert_resnet_cifar.ResNet_s(expert_resnet_cifar.BasicBlockB, [5, 5, 5], num_classes=num_classes, reduce_dimension=reduce_dimension, layer2_output_dim=layer2_output_dim, layer3_output_dim=layer3_output_dim, use_norm=use_norm, num_experts=num_experts, **kwargs)
+
+
+class ResNet34Model(Model):
+    def __init__(self, num_classes, reduce_dimension=False, layer3_output_dim=None, layer4_output_dim=None,
+                 use_norm=False, num_experts=1, **kwargs):
+        super().__init__(num_classes, None)
+        if num_experts == 1:
+            self.backbone = ResNet.ResNet(ResNet.BasicBlock, [3, 4, 6, 3], dropout=None, num_classes=num_classes,
+                                          use_norm=use_norm, reduce_dimension=reduce_dimension, reduce_first_kernel=True,
+                                          layer3_output_dim=layer3_output_dim, layer4_output_dim=layer4_output_dim,
+                                          **kwargs)
+        else:
+            self.backbone = Expert_ResNet.ResNet(Expert_ResNet.BasicBlock, [3, 4, 6, 3], dropout=None, num_classes=num_classes,
+                                                 use_norm=use_norm, reduce_dimension=reduce_dimension, reduce_first_kernel=True,
+                                                 layer3_output_dim=layer3_output_dim, layer4_output_dim=layer4_output_dim,
+                                                 num_experts=num_experts, **kwargs)
+
 class ResNet50Model(Model):
     def __init__(self, num_classes, reduce_dimension=False, layer3_output_dim=None, layer4_output_dim=None, use_norm=False, num_experts=1, **kwargs):
         super().__init__(num_classes, None)
         if num_experts == 1:
             self.backbone = ResNet.ResNet(ResNet.Bottleneck, [3, 4, 6, 3], dropout=None, num_classes=num_classes, reduce_dimension=reduce_dimension, layer3_output_dim=layer3_output_dim, layer4_output_dim=layer4_output_dim, use_norm=use_norm, **kwargs)
         else:
-            self.backbone = Expert_ResNet_hnet.ResNet(Expert_ResNet_hnet.Bottleneck, [3, 4, 6, 3], dropout=None, num_classes=num_classes, reduce_dimension=reduce_dimension, layer3_output_dim=layer3_output_dim, layer4_output_dim=layer4_output_dim, use_norm=use_norm, num_experts=num_experts, **kwargs)
-
+            self.backbone = Expert_ResNet.ResNet(Expert_ResNet.Bottleneck, [3, 4, 6, 3], dropout=None, num_classes=num_classes, reduce_dimension=reduce_dimension, layer3_output_dim=layer3_output_dim, layer4_output_dim=layer4_output_dim, use_norm=use_norm, num_experts=num_experts, **kwargs)
+  
 class ResNeXt50Model(Model):
-    def __init__(self, num_classes, reduce_dimension=False, layer3_output_dim=None, layer4_output_dim=None, num_experts=1, use_hnet=False, use_norm=False, **kwargs):
+    def __init__(self, num_classes, reduce_dimension=False, layer3_output_dim=None, layer4_output_dim=None, use_norm=False, num_experts=1, **kwargs):
         super().__init__(num_classes, None)
         if num_experts == 1:
-            self.backbone = ResNeXt.ResNext(ResNeXt.Bottleneck, [3, 4, 6, 3], groups=32, width_per_group=4, dropout=None, num_classes=num_classes, reduce_dimension=reduce_dimension, layer3_output_dim=layer3_output_dim, layer4_output_dim=layer4_output_dim, use_norm=use_norm,**kwargs)
+            self.backbone = ResNeXt.ResNext(ResNeXt.Bottleneck, [3, 4, 6, 3], groups=32, width_per_group=4, dropout=None, num_classes=num_classes, reduce_dimension=reduce_dimension, layer3_output_dim=layer3_output_dim, layer4_output_dim=layer4_output_dim, use_norm=use_norm, **kwargs)
         else:
-            # self.backbone = Expert_ResNeXt_hnet.ResNext(Expert_ResNeXt.Bottleneck, [3, 4, 6, 3], groups=32, width_per_group=4, dropout=None, num_classes=num_classes, reduce_dimension=reduce_dimension, layer3_output_dim=layer3_output_dim, layer4_output_dim=layer4_output_dim, num_experts=num_experts, use_hnet=use_hnet, **kwargs)
-            self.backbone = Expert_ResNeXt_hnet.ResNext(Expert_ResNeXt_hnet.Bottleneck, [3, 4, 6, 3], groups=32, width_per_group=4, dropout=None, num_classes=num_classes, use_norm=use_norm, reduce_dimension=reduce_dimension, layer3_output_dim=layer3_output_dim, layer4_output_dim=layer4_output_dim, num_experts=num_experts, use_hnet=use_hnet, **kwargs)
+            self.backbone = Expert_ResNeXt.ResNext(Expert_ResNeXt.Bottleneck, [3, 4, 6, 3], groups=32, width_per_group=4, dropout=None, num_classes=num_classes, reduce_dimension=reduce_dimension, layer3_output_dim=layer3_output_dim, layer4_output_dim=layer4_output_dim, num_experts=num_experts, use_norm=use_norm, **kwargs)
  
 class ResNet101Model(Model):
     def __init__(self, num_classes, reduce_dimension=False, layer3_output_dim=None, layer4_output_dim=None, use_norm=False, num_experts=1, **kwargs):

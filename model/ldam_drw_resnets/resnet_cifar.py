@@ -92,9 +92,14 @@ class BasicBlock(nn.Module):
         return out
 
 
+class BasicBlockB(BasicBlock):
+    def __init__(self, in_planes, planes, stride=1):
+        super(BasicBlockB, self).__init__(in_planes, planes, stride=stride, option='B')
+
+
 class ResNet_s(nn.Module):
 
-    def __init__(self, block, num_blocks, num_classes=10, reduce_dimension=False, layer2_output_dim=None, layer3_output_dim=None, use_norm=False, s=30):
+    def __init__(self, block, num_blocks, num_classes=10, reduce_dimension=False, layer2_output_dim=None, layer3_output_dim=None, use_norm=False, s=30, **kwargs):
         super(ResNet_s, self).__init__()
         self.in_planes = 16
 

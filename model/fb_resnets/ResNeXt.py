@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 
 
 import math
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -16,6 +17,20 @@ def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, bias=False)
+
+
+# This class is from LDAM: https://github.com/kaidic/LDAM-DRW.
+class NormedLinear(nn.Module):
+
+    def __init__(self, in_features, out_features):
+        super(NormedLinear, self).__init__()
+        self.weight = nn.Parameter(torch.Tensor(in_features, out_features))
+        self.weight.data.uniform_(-1, 1).renorm_(2, 1, 1e-5).mul_(1e5)
+
+    def forward(self, x):
+        out = F.linear(F.normalize(x), F.normalize(torch.t(self.weight)))
+        return out
+
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -91,7 +106,9 @@ class Bottleneck(nn.Module):
 
 class ResNext(nn.Module):
 
-    def __init__(self, block, layers, groups=1, width_per_group=64, dropout=None, num_classes=1000, reduce_dimension=False, layer3_output_dim=None, layer4_output_dim=None):
+    def __init__(self, block, layers, groups=1, width_per_group=64, dropout=None, num_classes=1000,
+                 reduce_dimension=False, layer3_output_dim=None, layer4_output_dim=None, use_norm=False, s=30,
+                 zero_init_residual=False):
         self.inplanes = 64
         super(ResNext, self).__init__()
 
@@ -136,8 +153,23 @@ class ResNext(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-        self.linear = nn.Linear(layer4_output_dim * block.expansion, num_classes)
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        if zero_init_residual:
+            for m in self.modules():
+                if isinstance(m, Bottleneck) and m.bn3.weight is not None:
+                    nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
+                elif isinstance(m, BasicBlock) and m.bn2.weight is not None:
+                    nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
 
+        if use_norm:
+            self.linear = NormedLinear(layer4_output_dim * block.expansion, num_classes)
+        else:
+            s = 1
+            self.linear = nn.Linear(layer4_output_dim * block.expansion, num_classes)
+
+        self.s = s
 
     def _hook_before_iter(self):
         assert self.training, "_hook_before_iter should be called at training time only, after train() is called"
@@ -191,5 +223,6 @@ class ResNext(nn.Module):
                 x = self.dropout(x)
 
             x = self.linear(x)
+            x = x * self.s  # This hyperparam s is originally in the loss function, but we moved it here to prevent using s multiple times in distillation.
         
         return x

@@ -26,7 +26,7 @@ class NormedLinear(nn.Module):
         self.weight.data.uniform_(-1, 1).renorm_(2, 1, 1e-5).mul_(1e5)
 
     def forward(self, x):
-        out = F.normalize(x, dim=1).mm(F.normalize(self.weight, dim=0))
+        out = F.linear(F.normalize(x), F.normalize(torch.t(self.weight)))
         return out
 
 class BasicBlock(nn.Module):
@@ -103,7 +103,9 @@ class Bottleneck(nn.Module):
 
 class ResNext(nn.Module):
 
-    def __init__(self, block, layers, num_experts, groups=1, width_per_group=64, dropout=None, num_classes=1000, use_norm=False, reduce_dimension=False, layer3_output_dim=None, layer4_output_dim=None, returns_feat=False, s=30):
+    def __init__(self, block, layers, num_experts, groups=1, width_per_group=64, dropout=None, num_classes=1000, use_norm=False,
+                 reduce_dimension=False, layer3_output_dim=None, layer4_output_dim=None, returns_feat=False, s=30,
+                 zero_init_residual=False):
         self.inplanes = 64
         self.num_experts = num_experts
         super(ResNext, self).__init__()
@@ -152,6 +154,16 @@ class ResNext(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
+
+        # Zero-initialize the last BN in each residual branch,
+        # so that the residual branch starts with zeros, and each residual block behaves like an identity.
+        # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
+        if zero_init_residual:
+            for m in self.modules():
+                if isinstance(m, Bottleneck) and m.bn3.weight is not None:
+                    nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
+                elif isinstance(m, BasicBlock) and m.bn2.weight is not None:
+                    nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
 
         if use_norm:
             self.linears = nn.ModuleList([NormedLinear(layer4_output_dim * block.expansion, num_classes) for _ in range(num_experts)])

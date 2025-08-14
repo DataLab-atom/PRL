@@ -5,11 +5,107 @@ import numpy as np
  
 eps = 1e-7 
 
+class BSExpertLoss(nn.Module):
+    r"""
+    References:
+
+    """
+
+    def __init__(self, cls_num_list=None, tau_list=(0, 1, 2), eps=1e-9, **kwargs):
+        super().__init__()
+        self.base_loss = F.cross_entropy
+
+        self.register_buffer('bsce_weight', torch.tensor(cls_num_list).float())
+        self.register_buffer('tau_list', torch.tensor(tau_list).float())
+        self.num_experts = len(tau_list)
+        self.eps = eps
+
+        assert self.num_experts >= 1
+
+    def forward(self, output_logits, targets, extra_info=None, return_expert_losses=False):
+        """
+        Args:
+            inputs: prediction matrix (before softmax) with shape (batch_size, num_classes)
+            targets: ground truth labels with shape (batch_size)
+        """
+        # print("input in loss")
+        # print(output_logits)
+        if extra_info is None:
+            return self.base_loss(output_logits, targets)  # output_logits indicates the final prediction
+
+        logits = extra_info['logits']
+        assert len(logits.shape) == 3
+        assert logits.shape[0] == self.num_experts
+
+        expert_losses = dict()
+        # loss = []
+        # for idx in range(self.num_experts):
+        #     adjusted_expert_logits = logits[idx] + self.get_bias_from_index(idx)
+        #     expert_losses[f'loss_e_{idx}'] = expert_loss = self.base_loss(adjusted_expert_logits, targets)
+        #     loss.append(expert_loss) 
+        # # loss = loss / self.num_experts
+        # loss = torch.stack(loss)
+        # loss = loss + torch.logsumexp((loss/0.1), dim=0) * 0.1
+
+
+        loss = 0.0
+        for idx in range(self.num_experts):
+            adjusted_expert_logits = logits[idx] + self.get_bias_from_index(idx)
+            expert_loss = self.base_loss(adjusted_expert_logits, targets)
+            # expert_loss = torch.stack(expert_loss)
+            expert_loss = expert_loss + torch.logsumexp((expert_loss/0.1), dim=0) * 0.1
+            expert_losses[f'loss_e_{idx}'] = expert_loss
+            loss = loss + expert_loss
+
+        loss = loss / self.num_experts
+        
+
+        if return_expert_losses:
+            return loss, expert_losses
+        else:
+            return loss
+
+    def get_default_bias(self, tau=1):
+        prior = self.bsce_weight
+        prior = prior / prior.sum()
+        log_prior = torch.log(prior + self.eps)
+        return tau * log_prior
+
+    def get_bias_from_index(self, e_idx):
+        tau = self.tau_list[e_idx]
+        return self.get_default_bias(tau)
+
+
+class CrossEntropyLoss(nn.Module):
+    def __init__(self, cls_num_list=None, reweight_CE=False, **kwargs):
+        super().__init__()
+        if reweight_CE:
+            idx = 1  # condition could be put in order to set idx
+            betas = [0, 0.9999]
+            effective_num = 1.0 - np.power(betas[idx], cls_num_list)
+            per_cls_weights = (1.0 - betas[idx]) / np.array(effective_num)
+            per_cls_weights = per_cls_weights / np.sum(per_cls_weights) * len(cls_num_list)
+            self.per_cls_weights = torch.tensor(per_cls_weights, dtype=torch.float, requires_grad=False)
+        else:
+            self.per_cls_weights = None
+
+    def to(self, device):
+        super().to(device)
+        if self.per_cls_weights is not None:
+            self.per_cls_weights = self.per_cls_weights.to(device)
+
+        return self
+
+    def forward(self, output_logits, target, **kwargs):  # output is logits
+        return F.cross_entropy(output_logits, target, weight=self.per_cls_weights)
+
+
 def focal_loss(input_values, gamma):
     """Computes the focal loss"""
     p = torch.exp(-input_values)
     loss = (1 - p) ** gamma * input_values
     return loss.mean()
+
 
 class FocalLoss(nn.Module):
     def __init__(self, cls_num_list=None, weight=None, gamma=0.):
@@ -24,28 +120,6 @@ class FocalLoss(nn.Module):
     def forward(self, output_logits, target):
         return focal_loss(F.cross_entropy(output_logits, target, reduction='none', weight=self.weight), self.gamma)
 
-class CrossEntropyLoss(nn.Module):
-    def __init__(self, cls_num_list=None, reweight_CE=False):
-        super().__init__()
-        if reweight_CE:
-            idx = 1 # condition could be put in order to set idx
-            betas = [0, 0.9999]
-            effective_num = 1.0 - np.power(betas[idx], cls_num_list)
-            per_cls_weights = (1.0 - betas[idx]) / np.array(effective_num)
-            per_cls_weights = per_cls_weights / np.sum(per_cls_weights) * len(cls_num_list)
-            self.per_cls_weights = torch.tensor(per_cls_weights, dtype=torch.float, requires_grad=False)
-        else:
-            self.per_cls_weights = None
-
-    def to(self, device):
-        super().to(device)
-        if self.per_cls_weights is not None:
-            self.per_cls_weights = self.per_cls_weights.to(device)
-        
-        return self
-
-    def forward(self, output_logits, target): # output is logits
-        return F.cross_entropy(output_logits, target, weight=self.per_cls_weights)
 
 class LDAMLoss(nn.Module):
     def __init__(self, cls_num_list=None, max_m=0.5, s=30, reweight_epoch=-1):
@@ -115,9 +189,49 @@ class LDAMLoss(nn.Module):
         final_output = self.get_final_output(output_logits, target)
         return F.cross_entropy(final_output, target, weight=self.per_cls_weights)
 
+
+class LADELoss(nn.Module):
+    def __init__(self, cls_num_list=None, remine_lambda=0.01, **kwargs):
+        super().__init__()
+        num_classes = len(cls_num_list)
+        img_num_per_cls = torch.tensor(cls_num_list).float()
+
+        self.register_buffer('prior', img_num_per_cls / img_num_per_cls.sum())
+        self.register_buffer('balanced_prior', torch.tensor(1. / num_classes).float())
+        self.register_buffer('cls_weight', img_num_per_cls.float() / torch.sum(img_num_per_cls.float()))
+        self.num_classes = num_classes
+        self.remine_lambda = remine_lambda  # for cifar-lt: 0.01, for imagenet-lt: 0.5, for inaturalist: 0.1
+
+    def mine_lower_bound(self, x_p, x_q, num_samples_per_cls):
+        N = x_p.size(-1)
+        first_term = torch.sum(x_p, -1) / (num_samples_per_cls + 1e-8)
+        second_term = torch.logsumexp(x_q, -1) - np.log(N)
+
+        return first_term - second_term, first_term, second_term
+
+    def remine_lower_bound(self, x_p, x_q, num_samples_per_cls):
+        loss, first_term, second_term = self.mine_lower_bound(x_p, x_q, num_samples_per_cls)
+        reg = (second_term ** 2) * self.remine_lambda
+        return loss - reg, first_term, second_term
+
+    def forward(self, y_pred, target, q_pred=None):
+        """
+        y_pred: N x C
+        target: N
+        """
+        per_cls_pred_spread = y_pred.T * (target == torch.arange(0, self.num_classes).view(-1, 1).type_as(target))  # C x N
+        pred_spread = (y_pred - torch.log(self.prior + 1e-9) + torch.log(self.balanced_prior + 1e-9)).T  # C x N
+
+        num_samples_per_cls = torch.sum(target == torch.arange(0, self.num_classes).view(-1, 1).type_as(target), -1).float()  # C
+        estim_loss, first_term, second_term = self.remine_lower_bound(per_cls_pred_spread, pred_spread, num_samples_per_cls)
+
+        loss = -torch.sum(estim_loss * self.cls_weight)
+        return loss
+
+
 class RIDELoss(nn.Module):
     def __init__(self, cls_num_list=None, base_diversity_temperature=1.0, max_m=0.5, s=30, reweight=True, reweight_epoch=-1, 
-        base_loss_factor=1.0, additional_diversity_factor=-0.2, reweight_factor=0.05):
+        base_loss_factor=1.0, additional_diversity_factor=-0.2, reweight_factor=0.05, **kwargs):
         super().__init__()
         self.base_loss = F.cross_entropy
         self.base_loss_factor = base_loss_factor
@@ -191,6 +305,9 @@ class RIDELoss(nn.Module):
             else:
                 self.per_cls_weights_base = None
                 self.per_cls_weights_diversity = None
+        else:
+            self.per_cls_weights_base = None
+            self.per_cls_weights_diversity = None
 
     def get_final_output(self, output_logits, target):
         x = output_logits
@@ -241,62 +358,47 @@ class RIDELoss(nn.Module):
         return loss
   
  
-class DiverseExpertLoss(nn.Module):
-    def __init__(self, cls_num_list=None,  max_m=0.5, s=30, tau=2):
+class TADELoss(nn.Module):
+    def __init__(self, cls_num_list=None, s=30, tau=2, **kwargs):
         super().__init__()
         self.base_loss = F.cross_entropy 
      
         prior = np.array(cls_num_list) / np.sum(cls_num_list)
-        print(prior.shape)
         self.prior = torch.tensor(prior).float().cuda()
         self.C_number = len(cls_num_list)  # class number
         self.s = s
-        self.tau = tau
+        self.tau = tau 
 
-    def inverse_prior(self, prior): 
+    def reverse_prior(self, prior):
         value, idx0 = torch.sort(prior)
         _, idx1 = torch.sort(idx0)
-        idx2 = prior.shape[0]-1-idx1 # reverse the order
-        inverse_prior = value.index_select(0,idx2)
+        idx2 = prior.shape[0]-1-idx1  # reverse the order
+        backward_prior = value.index_select(0,idx2)
         
-        return inverse_prior
+        return backward_prior
 
-    def forward(self, output_logits, target, extra_info=None, use_hnet=False):
+    def forward(self, output_logits, target, extra_info=None):
         if extra_info is None:
             return self.base_loss(output_logits, target)  # output_logits indicates the final prediction
-       
+
+        loss = 0
+
         # Obtain logits from each expert  
         expert1_logits = extra_info['logits'][0]
         expert2_logits = extra_info['logits'][1] 
         expert3_logits = extra_info['logits'][2]  
-        
-        if use_hnet==True:
-            loss = []
-            loss.append(self.base_loss(expert1_logits, target))
-
-            expert2_logits = expert2_logits + torch.log(self.prior + 1e-9) 
-            loss.append(self.base_loss(expert2_logits, target))
-
-            inverse_prior = self.inverse_prior(self.prior)
-            expert3_logits = expert3_logits + torch.log(self.prior + 1e-9) - self.tau * torch.log(inverse_prior+ 1e-9) 
-            loss.append(self.base_loss(expert3_logits, target))
-            return loss
-
-        loss = 0
  
-        # Softmax loss for expert 1 
+        # Softmax loss for expert 1
         loss += self.base_loss(expert1_logits, target)
         
         # Balanced Softmax loss for expert 2 
         expert2_logits = expert2_logits + torch.log(self.prior + 1e-9) 
         loss += self.base_loss(expert2_logits, target)
         
-        # Inverse Softmax loss for expert 3
-        inverse_prior = self.inverse_prior(self.prior)
-        expert3_logits = expert3_logits + torch.log(self.prior + 1e-9) - self.tau * torch.log(inverse_prior+ 1e-9) 
+        # Backward Softmax loss for expert 3
+        reverse_prior = self.reverse_prior(self.prior)
+        expert3_logits = expert3_logits + torch.log(self.prior + 1e-9) - self.tau * torch.log(reverse_prior + 1e-9)
         loss += self.base_loss(expert3_logits, target)
    
         return loss
     
- 
-     
