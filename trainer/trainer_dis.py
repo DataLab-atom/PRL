@@ -13,9 +13,9 @@ from torch.utils.data import DataLoader, DistributedSampler
 from pytorch_lightning.loggers import WandbLogger
 import torch.distributed as dist
 
-class Trainer(BaseTrainer):
+class TrainerDis(BaseTrainer):
     """
-    Trainer class
+    TrainerDis class
     """
     def __init__(self, model, criterion, metric_ftns, optimizer, config, data_loader, combiner,
                  finetuning_combiner=None, valid_data_loader=None, val_criterion=None,
@@ -56,6 +56,21 @@ class Trainer(BaseTrainer):
         self.log_step = int(np.sqrt(data_loader.batch_size))
         self.save_imgs = save_imgs
 
+        # Initialize distributed model if multiple GPUs are used
+        self.model = self.model.to(self.device)
+        if self.config['world_size'] > 1:
+            self.model = DDP(self.model, device_ids=[self.config['gpu']])
+        else:
+            self.model = self.model.to(self.device)
+
+        # 创建数据加载器，并且使用 DistributedSampler 进行数据分割
+        self.data_sampler = DistributedSampler(data_loader.dataset, num_replicas=config['world_size'], rank=config['rank'])
+        self.data_loader = DataLoader(data_loader.dataset, batch_size=config['batch_size'], sampler=self.data_sampler)
+    
+        # 创建验证数据加载器，并使用 DistributedSampler
+        self.valid_data_sampler = DistributedSampler(valid_data_loader.dataset, num_replicas=config['world_size'], rank=config['rank'], shuffle=False)
+        self.valid_data_loader = DataLoader(valid_data_loader.dataset, batch_size=config['batch_size'], sampler=self.valid_data_sampler)
+
         # setup visualization writer instance
         if self.config['trainer'].get('wandb', False):
             self.writer = setup_wandb_logger(self.config)
@@ -90,6 +105,9 @@ class Trainer(BaseTrainer):
         :return: A log that contains average loss and metric in this epoch.
         """
         self.model.train()
+
+        self.data_sampler.set_epoch(epoch)  # Important for distributed training
+
         self.real_model._hook_before_iter()
 
         self.train_metrics.reset()
