@@ -7,6 +7,9 @@ from torch.utils.data import DataLoader, Dataset, Sampler
 from base import BaseDataLoader
 from PIL import Image
 
+from dataset.others import aug_plus
+
+
 class BalancedSampler(Sampler):
     def __init__(self, buckets, retain_epoch_size=False):
         for bucket in buckets:
@@ -35,7 +38,7 @@ class BalancedSampler(Sampler):
 
     def __len__(self):
         if self.retain_epoch_size:
-            return sum([len(bucket) for bucket in self.buckets]) # Actually we need to upscale to next full batch
+            return sum([len(bucket) for bucket in self.buckets]) # Acrually we need to upscale to next full batch
         else:
             return max([len(bucket) for bucket in self.buckets]) * self.bucket_num # Ensures every instance has the chance to be visited in an epoch
 
@@ -72,26 +75,16 @@ class ImageNetLTDataLoader(DataLoader):
     """
     ImageNetLT Data Loader
     """
-    def __init__(self, data_dir, batch_size, shuffle=True, num_workers=1, training=True, balanced=False, retain_epoch_size=True, 
+    def __init__(self, data_dir, batch_size, shuffle=True, num_workers=1,
+                 training=True, balanced=False, retain_epoch_size=True, randaugm=False,
                  train_txt="./data_txt/ImageNet_LT/ImageNet_LT_train.txt", 
                  val_txt="./data_txt/ImageNet_LT/ImageNet_LT_val.txt", 
                  test_txt="./data_txt/ImageNet_LT/ImageNet_LT_test.txt"):
-        train_trsfm = transforms.Compose([
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
-        test_trsfm = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
+
+        train_trsfm, test_trsfm = self.get_transformations(randaugm=randaugm)
 
         if training:
-            dataset = LT_Dataset(data_dir,  train_txt, train_trsfm)
+            dataset = LT_Dataset(data_dir, train_txt, train_trsfm)
             val_dataset = LT_Dataset(data_dir, val_txt, test_trsfm)
         else: # test
             dataset = LT_Dataset(data_dir, test_txt, test_trsfm)
@@ -110,7 +103,7 @@ class ImageNetLTDataLoader(DataLoader):
             cls_num_list[label] += 1
 
         self.cls_num_list = cls_num_list
-        print(cls_num_list)
+
         if balanced:
             if training:
                 buckets = [[] for _ in range(num_classes)]
@@ -127,19 +120,35 @@ class ImageNetLTDataLoader(DataLoader):
         self.init_kwargs = {
             'batch_size': batch_size,
             'shuffle': self.shuffle,
-            'num_workers': num_workers,
-            # 'drop_last': True
+            'num_workers': num_workers
         }
 
-        super().__init__(dataset=self.dataset,  **self.init_kwargs, sampler=sampler) # Note that sampler does not apply to validation set
+        super().__init__(dataset=self.dataset, **self.init_kwargs, sampler=sampler) # Note that sampler does not apply to validation set
+
+    def get_transformations(self, randaugm=False):
+        if not randaugm:
+            train_trsfm = transforms.Compose([
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4,
+                                       hue=0),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
+            test_trsfm = transforms.Compose([
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ])
+        else:
+            train_trsfm = aug_plus(dataset='ImageNet_LT', mode='train')
+            test_trsfm = aug_plus(dataset='ImageNet_LT', mode='test')
+
+        return train_trsfm, test_trsfm
 
     def split_validation(self):
         # If you do not want to validate:
         #return None
         # If you want to validate:
         return DataLoader(dataset=self.val_dataset, **self.init_kwargs)
-
-
-
-
-

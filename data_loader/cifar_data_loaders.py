@@ -4,8 +4,12 @@ import numpy as np
 import os, sys
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Dataset, Sampler
+from torchvision.transforms import InterpolationMode
+
 from base import BaseDataLoader
 from PIL import Image
+
+from dataset.others import cifar_aug_plus
 from .imbalance_cifar import IMBALANCECIFAR10, IMBALANCECIFAR100
 
 class CIFAR100DataLoader(DataLoader):
@@ -93,20 +97,8 @@ class ImbalanceCIFAR100DataLoader(DataLoader):
     """
     Imbalance Cifar100 Data Loader
     """
-    def __init__(self, data_dir, batch_size, shuffle=True, num_workers=1, training=True, balanced=False, retain_epoch_size=True, imb_type='exp', imb_factor=0.01):
-        normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
-            std=[0.2023, 0.1994, 0.2010])
-        train_trsfm = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(15),
-            transforms.ToTensor(),
-            normalize,
-        ])
-        test_trsfm = transforms.Compose([
-            transforms.ToTensor(),
-            normalize,
-        ])
+    def __init__(self, data_dir, batch_size, shuffle=True, num_workers=1, training=True, balanced=False, retain_epoch_size=True, imb_type='exp', imb_factor=0.01, randaugm=False, cutout=False, trivialaugm=False):
+        train_trsfm, test_trsfm = self.get_transformations(randaugm=randaugm, cutout=cutout, trivialaugm=trivialaugm)
         test_dataset = datasets.CIFAR100(data_dir, train=False, download=True, transform=test_trsfm) # test set
         
         if training:
@@ -127,7 +119,6 @@ class ImbalanceCIFAR100DataLoader(DataLoader):
             cls_num_list[label] += 1
 
         self.cls_num_list = cls_num_list
-        print(cls_num_list)
 
         if balanced:
             if training:
@@ -149,6 +140,35 @@ class ImbalanceCIFAR100DataLoader(DataLoader):
         }
 
         super().__init__(dataset=self.dataset, **self.init_kwargs, sampler=sampler) # Note that sampler does not apply to validation set
+
+    def get_transformations(self, randaugm=False, cutout=False, trivialaugm=False):
+        if not randaugm and not cutout:
+            normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
+                                             std=[0.2023, 0.1994, 0.2010])
+            train_trsfm = transforms.Compose([
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation(15),
+                transforms.ToTensor(),
+                normalize,
+            ])
+            test_trsfm = transforms.Compose([
+                transforms.ToTensor(),
+                normalize,
+            ])
+        else:
+            if randaugm:
+                if trivialaugm:
+                    autoaugm = 'trivial'
+                else:
+                    autoaugm = 'auto'
+            else:
+                autoaugm = None
+
+            train_trsfm = cifar_aug_plus(mode='train', autoaugm=autoaugm, cutout=cutout)
+            test_trsfm = cifar_aug_plus(mode='test')
+
+        return train_trsfm, test_trsfm
 
     def split_validation(self):
         # If you do not want to validate:
@@ -181,7 +201,7 @@ class  TestAgnosticImbalanceCIFAR100DataLoader(DataLoader):
             val_dataset = test_dataset
         else:
             if test_imb_factor!=0:
-                dataset = IMBALANCECIFAR100(data_dir, train=False, download=True, transform=train_trsfm, imb_type=imb_type, imb_factor=test_imb_factor, reverse=reverse)
+                dataset = IMBALANCECIFAR100(data_dir, train=False, download=True, transform=test_trsfm, imb_type=imb_type, imb_factor=test_imb_factor, reverse=reverse)
             else:
                 dataset = test_dataset
             val_dataset = None
@@ -229,23 +249,11 @@ class ImbalanceCIFAR10DataLoader(DataLoader):
     """
     Imbalance Cifar10 Data Loader
     """
-    def __init__(self, data_dir, batch_size, shuffle=True, num_workers=1, training=True, balanced=False, retain_epoch_size=True, imb_factor=0.01):
-        normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
-            std=[0.2023, 0.1994, 0.2010])
-        train_trsfm = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(15),
-            transforms.ToTensor(),
-            normalize,
-        ])
-        test_trsfm = transforms.Compose([
-            transforms.ToTensor(),
-            normalize,
-        ])
-        
+    def __init__(self, data_dir, batch_size, shuffle=True, num_workers=1, training=True, balanced=False, retain_epoch_size=True, imb_factor=0.01, randaugm=False, cutout=False):
+        train_trsfm, test_trsfm = self.get_transformations(randaugm=randaugm, cutout=cutout)
+
         if training:
-            dataset = IMBALANCECIFAR10(data_dir, train=True, download=True, transform=train_trsfm, imb_factor=0.01)
+            dataset = IMBALANCECIFAR10(data_dir, train=True, download=True, transform=train_trsfm, imb_factor=imb_factor)
             val_dataset = datasets.CIFAR10(data_dir, train=False, download=True, transform=test_trsfm) # test set
         else:
             dataset = datasets.CIFAR10(data_dir, train=False, download=True, transform=test_trsfm) # test set
@@ -284,8 +292,29 @@ class ImbalanceCIFAR10DataLoader(DataLoader):
 
         super().__init__(dataset=self.dataset, **self.init_kwargs, sampler=sampler) # Note that sampler does not apply to validation set
 
+    def get_transformations(self, randaugm=False, cutout=False):
+        if not randaugm and not cutout:
+            normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
+                                             std=[0.2023, 0.1994, 0.2010])
+            train_trsfm = transforms.Compose([
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation(15),
+                transforms.ToTensor(),
+                normalize,
+            ])
+            test_trsfm = transforms.Compose([
+                transforms.ToTensor(),
+                normalize,
+            ])
+        else:
+            train_trsfm = cifar_aug_plus(mode='train', autoaugm=randaugm, cutout=cutout)
+            test_trsfm = cifar_aug_plus(mode='test')
+
+        return train_trsfm, test_trsfm
+
     def split_validation(self):
         # If you do not want to validate:
-        # return None
+        #return None
         # If you want to validate:
         return DataLoader(dataset=self.val_dataset, **self.init_kwargs)
