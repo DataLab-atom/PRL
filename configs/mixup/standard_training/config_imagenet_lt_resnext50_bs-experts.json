@@ -1,12 +1,12 @@
 {
-    "name": "ImageNet_LT_ResNeXt50_SADE",
+    "name": "ImageNet_LT_ResNeXt50",
     "n_gpu": 2,
 
     "arch": {
         "type": "ResNeXt50Model",
         "args": {
             "num_classes": 1000,
-            "reduce_dimension": true,
+            "reduce_dimension": false,
             "use_norm": true,
             "returns_feat": true,
             "num_experts": 3
@@ -18,7 +18,8 @@
             "data_dir": "./data/imagenet",
             "batch_size": 64,
             "shuffle": true,
-            "num_workers": 12
+            "num_workers": 12,
+            "randaugm": false
         }
     },
     "optimizer": {
@@ -32,9 +33,11 @@
     },
     "add_extra_info": true,
     "loss": {
-        "type": "DiverseExpertLoss",
-        "args":{
-             "tau": 2
+        "type": "BSExpertLoss",
+        "tau_min": 0,
+        "tau_max": 2.5,
+        "args": {
+            "tau_list": [0, 1.25, 2.5]
         }
     },
     "metrics": [
@@ -44,15 +47,21 @@
         "type": "CosineAnnealingLR",
         "args": {
             "T_max": 180,
-            "eta_min": 0
+            "eta_min": 0.0
         }
     },
     "trainer": {
         "epochs": 180,
-        "save_dir": "saved/imagenet/sade_e180_inv2_bs64_lr0.025",
-        "save_period": 180,
+        "save_dir": "saved/imagenet/bs_e180_tau1.25_bs128_lr0.025_x",
+        "save_period": 90,
         "verbosity": 2,
-        "monitor": "max val_accuracy",
-        "tensorboard": false
+        "monitor": "max val_accuracy"
+    },
+    "combiner": {
+        "type": "Combiner",
+        "mode": "mixup",
+        "mixup": {
+            "alpha": 0.3
+        }
     }
 }

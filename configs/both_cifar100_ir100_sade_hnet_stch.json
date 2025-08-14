@@ -1,7 +1,13 @@
 {
-    "name": "Imbalance_CIFAR100LT_IR50_SADE",
+    "name": "Imbalance_CIFAR100LT_IR100_SADE",
     "n_gpu": 1,
-
+    "use_hnet" : true,
+    "Solvers": {
+        "n_tasks": 3,
+        "name": "stch",
+        "mu":0.1,
+        "Z":0.0
+    },
     "arch": {
         "type": "ResNet32Model",
         "args": {
@@ -15,11 +21,11 @@
     "data_loader": {
         "type": "ImbalanceCIFAR100DataLoader",
         "args":{
-            "data_dir": "./data/CIFAR-100",
+            "data_dir": "/home/data/CIFAR-100",
             "batch_size": 128,
             "shuffle": true,
             "num_workers": 4,
-            "imb_factor": 0.02 
+            "imb_factor": 0.01 
         }
     },
     "optimizer": {
@@ -52,10 +58,11 @@
     },
     "trainer": {
         "epochs": 200, 
-        "save_dir": "saved/cifar100/ir50/sade_e200_inv2_bs128_lr0.1",
+        "save_dir": "saved/cifar100/ir100/sade_e200_inv2_bs128_lr0.1",
         "save_period": 100,
         "verbosity": 2, 
         "monitor": "max val_accuracy",
         "tensorboard": false
-    }
+    },
+    "epochs2": 5
 }

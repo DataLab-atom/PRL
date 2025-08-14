@@ -1,6 +1,6 @@
 {
     "name": "ImageNet_LT_ResNeXt50_SADE_test_time_training",
-    "n_gpu": 1,
+    "n_gpu": 2,
 
     "arch": {
         "type": "ResNeXt50Model",
@@ -15,7 +15,7 @@
     "data_loader": {
         "type": "ImageNetLTDataLoader",
         "args":{
-            "data_dir": "/home/data/ImageNet/Data/CLS-LOC",
+            "data_dir": "./data/imagenet",
             "batch_size": 128,
             "shuffle": true,
             "num_workers": 8

@@ -1,14 +1,7 @@
 {
     "name": "Imbalance_CIFAR100LT_IR00_SADE",
     "n_gpu": 1,
-    "use_hnet" : false,
-    "hnet_feature":false,
-    "Solvers": {
-        "n_tasks": 3,
-        "name": "stch",
-        "mu":0.10,
-        "Z":0.0
-    },
+
     "arch": {
         "type": "ResNet32Model",
         "args": {
@@ -22,7 +15,7 @@
     "data_loader": {
         "type": "ImbalanceCIFAR100DataLoader",
         "args":{
-            "data_dir": "/home/data/CIFAR-100",
+            "data_dir": "./data/CIFAR-100",
             "batch_size": 128,
             "shuffle": true,
             "num_workers": 4,

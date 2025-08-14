@@ -1,7 +1,6 @@
 {
     "name": "Imbalance_CIFAR100LT_IR100_SADE",
     "n_gpu": 1,
-    "hnet_feature":false,
     "use_hnet" : false,
     "Solvers": {
         "n_tasks": 3,

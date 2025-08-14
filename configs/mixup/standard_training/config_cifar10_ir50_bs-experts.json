@@ -1,25 +1,26 @@
 {
-    "name": "Imbalance_CIFAR100LT_IR50_SADE",
+    "name": "Imbalance_CIFAR10LT_IR50",
     "n_gpu": 1,
 
     "arch": {
         "type": "ResNet32Model",
         "args": {
-            "num_classes": 100,
-            "reduce_dimension": true,
+            "num_classes": 10,
+            "reduce_dimension": false,
             "use_norm": true,
             "returns_feat": true,
             "num_experts": 3
         }
     },
     "data_loader": {
-        "type": "ImbalanceCIFAR100DataLoader",
+        "type": "ImbalanceCIFAR10DataLoader",
         "args":{
-            "data_dir": "./data/CIFAR-100",
+            "data_dir": "./data/CIFAR-10",
             "batch_size": 128,
             "shuffle": true,
             "num_workers": 4,
-            "imb_factor": 0.02 
+            "imb_factor": 0.02,
+            "randaugm": false
         }
     },
     "optimizer": {
@@ -33,9 +34,11 @@
     },
     "add_extra_info": true,
     "loss": {
-        "type": "DiverseExpertLoss",
+        "type": "BSExpertLoss",
+        "tau_min": 0,
+        "tau_max": 2.0,
         "args": {
-            "tau": 2 
+            "tau_list": [0, 1.0, 2.0]
         }
     },
     "metrics": [
@@ -52,10 +55,16 @@
     },
     "trainer": {
         "epochs": 200, 
-        "save_dir": "saved/cifar100/ir50/sade_e200_inv2_bs128_lr0.1",
+        "save_dir": "saved/cifar10/ir50/bs_e200_tau1.0_bs128_lr0.1",
         "save_period": 100,
         "verbosity": 2, 
-        "monitor": "max val_accuracy",
-        "tensorboard": false
+        "monitor": "max val_accuracy"
+    },
+    "combiner": {
+        "type": "Combiner",
+        "mode": "mixup",
+        "mixup": {
+            "alpha": 0.8
+        }
     }
 }
