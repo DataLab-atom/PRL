@@ -3,12 +3,43 @@ import torch.nn
 from abc import abstractmethod
 from numpy import inf
 from logger import TensorboardWriter
+<<<<<<< HEAD
+from model.loss import CrossEntropyLoss
+=======
+>>>>>>> 8d2355699c83860ec2e02ba69fddef04df67ba23
 from utils import load_state_dict, rename_parallel_state_dict
 
 class BaseTrainer:
     """
     Base class for all trainers
     """
+<<<<<<< HEAD
+    def __init__(self, model, criterion, metric_ftns, optimizer, config, val_criterion=None, **kwargs):
+        self.config = config
+        self.logger = config.get_logger('trainer', config['trainer']['verbosity'])
+        # setup GPU device if available
+        self.device, device_ids = self._prepare_device(config['n_gpu'])
+        self.device_ids = device_ids
+
+        def setup_model(model):
+            # move model into configured device
+            model_ = model.to(self.device)
+            if len(self.device_ids) > 1:
+                wrapped_model = torch.nn.DataParallel(model_, device_ids=device_ids)
+            else:
+                wrapped_model = model_
+
+            return wrapped_model, model_
+
+        self.model, self.real_model = setup_model(model)
+        self.criterion = criterion.to(self.device)
+
+        if val_criterion is not None:
+            self.val_criterion = val_criterion.to(self.device)
+        else:
+            self.val_criterion = CrossEntropyLoss().to(self.device)
+
+=======
     def __init__(self, model, criterion, metric_ftns, optimizer, config):
         self.config = config
         self.logger = config.get_logger('trainer', config['trainer']['verbosity'])
@@ -22,6 +53,7 @@ class BaseTrainer:
         self.real_model = self.model
 
         self.criterion = criterion.cuda()
+>>>>>>> 8d2355699c83860ec2e02ba69fddef04df67ba23
         self.metric_ftns = metric_ftns
         self.optimizer = optimizer
 
@@ -45,9 +77,12 @@ class BaseTrainer:
 
         self.checkpoint_dir = config.save_dir
 
+<<<<<<< HEAD
+=======
         # setup visualization writer instance                
         self.writer = TensorboardWriter(config.log_dir, self.logger, cfg_trainer['tensorboard'])
 
+>>>>>>> 8d2355699c83860ec2e02ba69fddef04df67ba23
         if config.load_crt is not None:
             print("Loading from cRT pretrain: {}".format(config.load_crt))
             self._load_crt(config.load_crt)
@@ -146,6 +181,10 @@ class BaseTrainer:
             'config': self.config,
             'criterion': self.criterion.state_dict()
         }
+<<<<<<< HEAD
+
+=======
+>>>>>>> 8d2355699c83860ec2e02ba69fddef04df67ba23
         if not best_only:
             filename = str(self.checkpoint_dir / 'checkpoint-epoch{}.pth'.format(epoch))
             torch.save(state, filename)
@@ -203,8 +242,11 @@ class BaseTrainer:
         state_dict = checkpoint['state_dict']
         if state_dict_only:
             rename_parallel_state_dict(state_dict)
+<<<<<<< HEAD
+=======
 
         # self.model.load_state_dict(state_dict)
+>>>>>>> 8d2355699c83860ec2e02ba69fddef04df67ba23
         load_state_dict(self.model, state_dict)
 
         if not state_dict_only:
